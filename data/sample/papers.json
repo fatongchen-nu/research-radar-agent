@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Artificial Intelligence Adoption and Analyst Forecast Accuracy",
+    "authors": ["Sample Author"],
+    "abstract": "We study whether firms adopting artificial intelligence tools exhibit changes in analyst forecast accuracy. The sample evidence is synthetic and intended for local demos.",
+    "source": "sample",
+    "source_id": "sample-ai-forecast-001",
+    "url": "https://example.com/sample-ai-forecast-001",
+    "published_at": "2026-01-15"
+  },
+  {
+    "title": "Automation Disclosure and Investor Information Processing",
+    "authors": ["Sample Researcher"],
+    "abstract": "This synthetic paper describes a related but weaker relationship between automation disclosure and investor information processing.",
+    "source": "sample",
+    "source_id": "sample-automation-disclosure-002",
+    "url": "https://example.com/sample-automation-disclosure-002",
+    "published_at": "2026-02-02"
+  }
+]
