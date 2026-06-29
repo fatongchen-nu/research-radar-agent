@@ -79,6 +79,7 @@ The first version uses Postgres plus Redis. Add pgvector or Qdrant once the inge
 ## Initial API Surface
 
 - `GET /api/v1/health`
+- `POST /api/v1/demo/sample-ingestion`
 - `POST /api/v1/topics`
 - `GET /api/v1/topics`
 - `POST /api/v1/topics/{topic_id}/ingestion-runs`

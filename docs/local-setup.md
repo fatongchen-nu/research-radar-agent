@@ -29,7 +29,28 @@ uv run uvicorn app.main:app --reload
 http://localhost:8000/docs
 ```
 
-5. Create a topic profile with keywords such as:
+5. For the least confusing first run, use the one-click demo endpoint:
+
+```text
+POST /api/v1/demo/sample-ingestion
+```
+
+Body:
+
+```json
+{
+  "name": "AI adoption and analyst forecasts",
+  "research_idea": "AI adoption may improve analyst forecast accuracy.",
+  "keywords": ["AI adoption", "forecast accuracy"],
+  "source_limit": 20
+}
+```
+
+It creates a topic and triggers ingestion in the same request.
+
+## Manual Topic Flow
+
+Create a topic profile with keywords such as:
 
 ```json
 {
@@ -39,7 +60,7 @@ http://localhost:8000/docs
 }
 ```
 
-6. Trigger ingestion.
+Then trigger ingestion.
 
 ```text
 POST /api/v1/topics/{topic_id}/ingestion-runs
