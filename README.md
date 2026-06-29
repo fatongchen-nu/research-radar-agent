@@ -35,6 +35,7 @@ app/
   core/                settings, errors, shared infrastructure
   db/                  SQLAlchemy session and ORM models
   etl/                 fetch, dedup, extract, and pipeline steps
+  repositories/        memory and Postgres persistence adapters
   schemas/             Pydantic request/response models
   services/            business logic
   workers/             scheduler and background jobs
@@ -52,6 +53,18 @@ uv run uvicorn app.main:app --reload
 ```
 
 Open `http://localhost:8000/docs`.
+
+For a zero-database smoke test, set:
+
+```bash
+REPOSITORY_BACKEND=memory
+```
+
+For the real backend path, keep:
+
+```bash
+REPOSITORY_BACKEND=postgres
+```
 
 ## Docker Services
 
@@ -75,9 +88,9 @@ The first version uses Postgres plus Redis. Add pgvector or Qdrant once the inge
 
 ## Next Build Steps
 
-1. Wire SQLAlchemy repositories to replace the current service stubs.
-2. Implement arXiv fetcher and local sample JSON fallback.
-3. Add claim extraction with structured LLM output and validation retry.
-4. Add keyword retrieval first, then pgvector or Qdrant retrieval.
-5. Persist Agent run events to Redis stream and replay them through SSE.
-6. Create 30 gold records for evaluation.
+1. Persist fetched papers, chunks, and extracted claims through repository classes.
+2. Add claim extraction with structured LLM output and validation retry.
+3. Add keyword retrieval first, then pgvector or Qdrant retrieval.
+4. Persist Agent run events to Redis stream and replay them through SSE.
+5. Connect the scheduler to topic profiles and ingestion runs.
+6. Expand the evaluation set from sample records to 30 gold records.

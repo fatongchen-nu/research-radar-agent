@@ -1,6 +1,4 @@
 from datetime import datetime
-from uuid import uuid4
-
 from pydantic import BaseModel, Field
 
 
@@ -17,7 +15,3 @@ class TopicProfileCreate(BaseModel):
 class TopicProfileRead(TopicProfileCreate):
     id: str
     last_run_at: datetime | None = None
-
-
-def topic_stub(payload: TopicProfileCreate) -> TopicProfileRead:
-    return TopicProfileRead(id=str(uuid4()), **payload.model_dump())

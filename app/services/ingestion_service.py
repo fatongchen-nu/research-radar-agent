@@ -1,25 +1,27 @@
+from fastapi import Depends
+
 from app.core.errors import AppError
-from app.schemas.ingestion import IngestionRunRead, IngestionRunStart, ingestion_stub
+from app.repositories.dependencies import get_ingestion_run_repository
+from app.repositories.run_repository import IngestionRunRepository
+from app.schemas.ingestion import IngestionRunRead, IngestionRunStart
 
 
 class IngestionService:
-    def __init__(self) -> None:
-        self._runs: dict[str, IngestionRunRead] = {}
+    def __init__(self, repository: IngestionRunRepository) -> None:
+        self.repository = repository
 
     async def start_run(self, topic_id: str, payload: IngestionRunStart) -> IngestionRunRead:
         _ = payload
-        run = ingestion_stub(topic_id)
-        self._runs[run.id] = run
-        return run
+        return await self.repository.create(topic_id)
 
     async def get_run(self, run_id: str) -> IngestionRunRead:
-        if run_id not in self._runs:
+        run = await self.repository.get(run_id)
+        if run is None:
             raise AppError("RESOURCE_NOT_FOUND", "Ingestion run not found.", status_code=404)
-        return self._runs[run_id]
+        return run
 
 
-_ingestion_service = IngestionService()
-
-
-def get_ingestion_service() -> IngestionService:
-    return _ingestion_service
+def get_ingestion_service(
+    repository: IngestionRunRepository = Depends(get_ingestion_run_repository),
+) -> IngestionService:
+    return IngestionService(repository)

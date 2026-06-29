@@ -2,33 +2,37 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 
+from fastapi import Depends
+
 from app.core.errors import AppError
-from app.schemas.agent_runs import AgentRunCreate, AgentRunRead, agent_run_stub
+from app.repositories.dependencies import get_agent_run_repository
+from app.repositories.run_repository import AgentRunRepository
+from app.schemas.agent_runs import AgentRunCreate, AgentRunRead
 
 
 class AgentRunService:
-    def __init__(self) -> None:
-        self._runs: dict[str, AgentRunRead] = {}
-        self._request_ids: set[tuple[str, str]] = set()
+    def __init__(self, repository: AgentRunRepository) -> None:
+        self.repository = repository
 
     async def create_run(self, payload: AgentRunCreate) -> AgentRunRead:
-        idempotency_key = (payload.topic_profile_id, payload.request_id)
-        if idempotency_key in self._request_ids:
+        existing = await self.repository.find_by_request_id(
+            payload.topic_profile_id,
+            payload.request_id,
+        )
+        if existing is not None:
             raise AppError(
                 "CONFLICT",
                 "request_id already exists for this topic profile.",
                 status_code=409,
             )
 
-        run = agent_run_stub(payload)
-        self._runs[run.id] = run
-        self._request_ids.add(idempotency_key)
-        return run
+        return await self.repository.create(payload)
 
     async def get_run(self, run_id: str) -> AgentRunRead:
-        if run_id not in self._runs:
+        run = await self.repository.get(run_id)
+        if run is None:
             raise AppError("RESOURCE_NOT_FOUND", "Agent run not found.", status_code=404)
-        return self._runs[run_id]
+        return run
 
     async def stream_events(self, run_id: str) -> AsyncIterator[str]:
         run = await self.get_run(run_id)
@@ -43,8 +47,7 @@ class AgentRunService:
             await asyncio.sleep(0.05)
 
 
-_agent_run_service = AgentRunService()
-
-
-def get_agent_run_service() -> AgentRunService:
-    return _agent_run_service
+def get_agent_run_service(
+    repository: AgentRunRepository = Depends(get_agent_run_repository),
+) -> AgentRunService:
+    return AgentRunService(repository)

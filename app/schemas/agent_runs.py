@@ -1,6 +1,4 @@
 from datetime import datetime
-from uuid import uuid4
-
 from pydantic import BaseModel, Field
 
 from app.schemas.common import Citation
@@ -23,14 +21,3 @@ class AgentRunRead(BaseModel):
     token_usage: dict = Field(default_factory=dict)
     feedback_score: int | None = None
     created_at: datetime
-
-
-def agent_run_stub(payload: AgentRunCreate) -> AgentRunRead:
-    return AgentRunRead(
-        id=str(uuid4()),
-        topic_profile_id=payload.topic_profile_id,
-        request_id=payload.request_id,
-        question=payload.question,
-        status="queued",
-        created_at=datetime.utcnow(),
-    )

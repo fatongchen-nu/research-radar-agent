@@ -1,18 +1,23 @@
+from typing import Protocol
+
 from app.schemas.agent_runs import AgentRunCreate, AgentRunRead
 from app.schemas.ingestion import IngestionRunRead
 
 
-class AgentRunRepository:
+class AgentRunRepository(Protocol):
     async def create(self, payload: AgentRunCreate) -> AgentRunRead:
-        raise NotImplementedError
+        ...
 
     async def get(self, run_id: str) -> AgentRunRead | None:
-        raise NotImplementedError
+        ...
+
+    async def find_by_request_id(self, topic_profile_id: str, request_id: str) -> AgentRunRead | None:
+        ...
 
 
-class IngestionRunRepository:
+class IngestionRunRepository(Protocol):
     async def create(self, topic_id: str) -> IngestionRunRead:
-        raise NotImplementedError
+        ...
 
     async def get(self, run_id: str) -> IngestionRunRead | None:
-        raise NotImplementedError
+        ...

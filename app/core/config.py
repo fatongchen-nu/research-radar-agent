@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     app_name: str = "Research Radar Agent"
     app_env: str = "development"
     api_v1_prefix: str = "/api/v1"
+    repository_backend: str = "memory"
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/research_radar"
     redis_url: str = "redis://localhost:6379/0"
