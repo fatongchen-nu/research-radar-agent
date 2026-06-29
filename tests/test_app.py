@@ -71,6 +71,7 @@ def test_agent_run_returns_citation_grounded_answer_after_demo_ingestion() -> No
     run = run_response.json()
     assert run["status"] == "completed"
     assert "Question:" in run["answer"]
+    assert "Supporting evidence" in run["answer"]
     assert run["citations"]
     assert run["token_usage"]["retrieved_claims"] >= 1
 

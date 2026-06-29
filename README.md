@@ -9,7 +9,7 @@ This project is the MVP version of the second resume project from `backend-agent
 - Create topic profiles for research ideas.
 - Fetch paper metadata from arXiv and Semantic Scholar-style sources.
 - Deduplicate papers by DOI, source id, arXiv id, and normalized title.
-- Extract structured evidence claims from abstracts or PDF text.
+- Extract structured evidence claims from abstracts with a deterministic local extractor.
 - Store papers, chunks, evidence claims, ingestion runs, agent runs, feedback, and daily digests.
 - Answer questions through async Agent runs with SSE event streaming.
 - Generate deterministic citation-grounded answers from indexed evidence claims.
@@ -92,7 +92,7 @@ The first version uses Postgres plus Redis. Add pgvector or Qdrant once the inge
 
 ## Next Build Steps
 
-1. Add claim extraction with structured LLM output and validation retry.
+1. Add optional LLM structured extraction with validation retry.
 2. Upgrade retrieval from deterministic keyword matching to pgvector or Qdrant.
 3. Persist Agent run events to Redis stream and replay them through SSE.
 4. Connect the scheduler to topic profiles and ingestion runs.

@@ -40,3 +40,34 @@ def test_memory_evidence_repository_counts_new_papers_once() -> None:
     assert first.extracted_claims == 1
     assert second.new_papers == 0
     assert second.extracted_claims == 0
+
+
+def test_rule_based_extractor_marks_direct_ai_forecast_evidence_as_support() -> None:
+    from app.etl.extractors import EvidenceExtractor
+
+    evidence = asyncio.run(
+        EvidenceExtractor().extract_from_abstract(
+            "Artificial Intelligence Adoption and Analyst Forecast Accuracy",
+            "We study whether firms adopting artificial intelligence tools exhibit changes in "
+            "analyst forecast accuracy.",
+        )
+    )
+
+    assert evidence.stance == "support"
+    assert "directly studies" in evidence.key_finding
+    assert evidence.confidence > 0.7
+
+
+def test_rule_based_extractor_marks_automation_disclosure_as_weak() -> None:
+    from app.etl.extractors import EvidenceExtractor
+
+    evidence = asyncio.run(
+        EvidenceExtractor().extract_from_abstract(
+            "Automation Disclosure and Investor Information Processing",
+            "This paper describes a related but weaker relationship between automation "
+            "disclosure and investor information processing.",
+        )
+    )
+
+    assert evidence.stance == "weak"
+    assert evidence.confidence > 0.5
