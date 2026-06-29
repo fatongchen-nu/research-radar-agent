@@ -64,7 +64,11 @@ class ArxivFetcher(SourceFetcher):
     base_url = "https://export.arxiv.org/api/query"
     atom_namespace = {"atom": "http://www.w3.org/2005/Atom"}
 
-    def __init__(self, client: httpx.AsyncClient | None = None, timeout_seconds: float = 20.0) -> None:
+    def __init__(
+        self,
+        client: httpx.AsyncClient | None = None,
+        timeout_seconds: float = 20.0,
+    ) -> None:
         self.client = client
         self.timeout_seconds = timeout_seconds
 

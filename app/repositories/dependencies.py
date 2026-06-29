@@ -5,13 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.session import get_db_session
+from app.repositories.evidence_repository import EvidenceRepository
 from app.repositories.memory import (
     memory_agent_run_repository,
+    memory_evidence_repository,
     memory_ingestion_run_repository,
     memory_topic_repository,
 )
 from app.repositories.postgres import (
     PostgresAgentRunRepository,
+    PostgresEvidenceRepository,
     PostgresIngestionRunRepository,
     PostgresTopicRepository,
 )
@@ -56,3 +59,13 @@ def get_agent_run_repository(
             raise RuntimeError("Postgres repository selected without a database session.")
         return PostgresAgentRunRepository(session)
     return memory_agent_run_repository
+
+
+def get_evidence_repository(
+    session: AsyncSession | None = Depends(get_optional_db_session),
+) -> EvidenceRepository:
+    if settings.repository_backend == "postgres":
+        if session is None:
+            raise RuntimeError("Postgres repository selected without a database session.")
+        return PostgresEvidenceRepository(session)
+    return memory_evidence_repository

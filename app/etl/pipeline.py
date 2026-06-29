@@ -8,7 +8,11 @@ class EvidencePipeline:
         self.fetcher = fetcher
         self.extractor = extractor
 
-    async def run(self, keywords: list[str], limit: int = 20) -> list[tuple[FetchedPaper, ExtractedEvidence]]:
+    async def run(
+        self,
+        keywords: list[str],
+        limit: int = 20,
+    ) -> list[tuple[FetchedPaper, ExtractedEvidence]]:
         papers = deduplicate_papers(await self.fetcher.fetch(keywords=keywords, limit=limit))
         results: list[tuple[FetchedPaper, ExtractedEvidence]] = []
         for paper in papers:

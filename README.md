@@ -54,6 +54,8 @@ uv run uvicorn app.main:app --reload
 
 Open `http://localhost:8000/docs`.
 
+See [docs/local-setup.md](docs/local-setup.md) for the exact local checklist.
+
 For a zero-database smoke test, set:
 
 ```bash
@@ -88,9 +90,8 @@ The first version uses Postgres plus Redis. Add pgvector or Qdrant once the inge
 
 ## Next Build Steps
 
-1. Persist fetched papers, chunks, and extracted claims through repository classes.
-2. Add claim extraction with structured LLM output and validation retry.
-3. Add keyword retrieval first, then pgvector or Qdrant retrieval.
-4. Persist Agent run events to Redis stream and replay them through SSE.
-5. Connect the scheduler to topic profiles and ingestion runs.
-6. Expand the evaluation set from sample records to 30 gold records.
+1. Add claim extraction with structured LLM output and validation retry.
+2. Add keyword retrieval first, then pgvector or Qdrant retrieval.
+3. Persist Agent run events to Redis stream and replay them through SSE.
+4. Connect the scheduler to topic profiles and ingestion runs.
+5. Expand the evaluation set from sample records to 30 gold records.

@@ -58,7 +58,9 @@ class EvidenceClaim(Base, TimestampMixin):
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     paper_id: Mapped[UUID] = mapped_column(ForeignKey("papers.id", ondelete="CASCADE"))
-    chunk_id: Mapped[UUID | None] = mapped_column(ForeignKey("paper_chunks.id", ondelete="SET NULL"))
+    chunk_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("paper_chunks.id", ondelete="SET NULL")
+    )
     theory: Mapped[str | None] = mapped_column(Text)
     research_question: Mapped[str | None] = mapped_column(Text)
     method: Mapped[str | None] = mapped_column(Text)
@@ -74,13 +76,32 @@ class IngestionRun(Base):
     __tablename__ = "ingestion_runs"
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    topic_profile_id: Mapped[UUID] = mapped_column(ForeignKey("topic_profiles.id", ondelete="CASCADE"))
+    topic_profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("topic_profiles.id", ondelete="CASCADE")
+    )
     status: Mapped[str] = mapped_column(String(40))
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     new_papers: Mapped[int] = mapped_column(default=0)
     extracted_claims: Mapped[int] = mapped_column(default=0)
     errors: Mapped[list[dict]] = mapped_column(JSONB, default=list)
+
+
+class TopicPaper(Base, TimestampMixin):
+    __tablename__ = "topic_papers"
+    __table_args__ = (
+        UniqueConstraint("topic_profile_id", "paper_id", name="uq_topic_papers_topic_paper"),
+    )
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    topic_profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("topic_profiles.id", ondelete="CASCADE")
+    )
+    paper_id: Mapped[UUID] = mapped_column(ForeignKey("papers.id", ondelete="CASCADE"))
+    relevance_score: Mapped[float] = mapped_column(Numeric(4, 3), default=0.500)
+    first_seen_run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("ingestion_runs.id", ondelete="SET NULL")
+    )
 
 
 class AgentRun(Base, TimestampMixin):
@@ -90,7 +111,9 @@ class AgentRun(Base, TimestampMixin):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    topic_profile_id: Mapped[UUID] = mapped_column(ForeignKey("topic_profiles.id", ondelete="CASCADE"))
+    topic_profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("topic_profiles.id", ondelete="CASCADE")
+    )
     request_id: Mapped[str] = mapped_column(String(200))
     question: Mapped[str] = mapped_column(Text)
     answer: Mapped[str | None] = mapped_column(Text)
@@ -108,7 +131,9 @@ class DailyDigest(Base, TimestampMixin):
     )
 
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
-    topic_profile_id: Mapped[UUID] = mapped_column(ForeignKey("topic_profiles.id", ondelete="CASCADE"))
+    topic_profile_id: Mapped[UUID] = mapped_column(
+        ForeignKey("topic_profiles.id", ondelete="CASCADE")
+    )
     digest_date: Mapped[date] = mapped_column(Date)
     summary: Mapped[str] = mapped_column(Text)
     top_papers: Mapped[list[dict]] = mapped_column(JSONB, default=list)

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import select
@@ -6,7 +7,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.db.models import AgentRun, IngestionRun, TopicProfile
+from app.db.models import (
+    AgentRun,
+    EvidenceClaim,
+    IngestionRun,
+    Paper,
+    PaperChunk,
+    TopicPaper,
+    TopicProfile,
+)
+from app.etl.dedup import normalize_title
+from app.etl.extractors import ExtractedEvidence
+from app.etl.fetchers import FetchedPaper
+from app.repositories.evidence_repository import EvidenceRepository, IngestionPersistenceResult
 from app.repositories.run_repository import AgentRunRepository, IngestionRunRepository
 from app.repositories.topic_repository import TopicRepository
 from app.schemas.agent_runs import AgentRunCreate, AgentRunRead
@@ -23,6 +36,15 @@ def _coerce_uuid(value: str) -> UUID:
 
 def _float(value: Decimal | float) -> float:
     return float(value)
+
+
+def _parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _topic_to_read(model: TopicProfile) -> TopicProfileRead:
@@ -104,6 +126,34 @@ class PostgresIngestionRunRepository(IngestionRunRepository):
         model = await self.session.get(IngestionRun, _coerce_uuid(run_id))
         return _ingestion_to_read(model) if model else None
 
+    async def mark_completed(
+        self,
+        run_id: str,
+        new_papers: int,
+        extracted_claims: int,
+    ) -> IngestionRunRead | None:
+        model = await self.session.get(IngestionRun, _coerce_uuid(run_id))
+        if model is None:
+            return None
+        model.status = "completed"
+        model.ended_at = datetime.utcnow()
+        model.new_papers = new_papers
+        model.extracted_claims = extracted_claims
+        await self.session.commit()
+        await self.session.refresh(model)
+        return _ingestion_to_read(model)
+
+    async def mark_failed(self, run_id: str, errors: list[dict]) -> IngestionRunRead | None:
+        model = await self.session.get(IngestionRun, _coerce_uuid(run_id))
+        if model is None:
+            return None
+        model.status = "failed"
+        model.ended_at = datetime.utcnow()
+        model.errors = errors
+        await self.session.commit()
+        await self.session.refresh(model)
+        return _ingestion_to_read(model)
+
 
 class PostgresAgentRunRepository(AgentRunRepository):
     def __init__(self, session: AsyncSession) -> None:
@@ -133,7 +183,11 @@ class PostgresAgentRunRepository(AgentRunRepository):
         model = await self.session.get(AgentRun, _coerce_uuid(run_id))
         return _agent_run_to_read(model) if model else None
 
-    async def find_by_request_id(self, topic_profile_id: str, request_id: str) -> AgentRunRead | None:
+    async def find_by_request_id(
+        self,
+        topic_profile_id: str,
+        request_id: str,
+    ) -> AgentRunRead | None:
         result = await self.session.execute(
             select(AgentRun).where(
                 AgentRun.topic_profile_id == _coerce_uuid(topic_profile_id),
@@ -142,3 +196,139 @@ class PostgresAgentRunRepository(AgentRunRepository):
         )
         model = result.scalar_one_or_none()
         return _agent_run_to_read(model) if model else None
+
+
+class PostgresEvidenceRepository(EvidenceRepository):
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def save_pipeline_results(
+        self,
+        topic_id: str,
+        ingestion_run_id: str,
+        results: list[tuple[FetchedPaper, ExtractedEvidence]],
+    ) -> IngestionPersistenceResult:
+        topic_uuid = _coerce_uuid(topic_id)
+        run_uuid = _coerce_uuid(ingestion_run_id)
+        new_papers = 0
+        extracted_claims = 0
+
+        for fetched_paper, evidence in results:
+            paper, created = await self._get_or_create_paper(fetched_paper)
+            if created:
+                new_papers += 1
+
+            await self._ensure_topic_paper(topic_uuid, paper.id, run_uuid)
+            chunk = await self._get_or_create_abstract_chunk(paper, fetched_paper.abstract)
+            claim_created = await self._create_claim_if_missing(paper, chunk, evidence)
+            if claim_created:
+                extracted_claims += 1
+
+        await self.session.commit()
+        return IngestionPersistenceResult(new_papers, extracted_claims)
+
+    async def _get_or_create_paper(self, fetched_paper: FetchedPaper) -> tuple[Paper, bool]:
+        source_id = fetched_paper.source_id or normalize_title(fetched_paper.title)
+        result = await self.session.execute(
+            select(Paper).where(Paper.source == fetched_paper.source, Paper.source_id == source_id)
+        )
+        existing = result.scalar_one_or_none()
+        if existing is not None:
+            return existing, False
+
+        paper = Paper(
+            title=fetched_paper.title,
+            authors=fetched_paper.authors,
+            abstract=fetched_paper.abstract,
+            source=fetched_paper.source,
+            source_id=source_id,
+            url=fetched_paper.url,
+            doi=fetched_paper.doi,
+            arxiv_id=fetched_paper.arxiv_id,
+            published_at=_parse_datetime(fetched_paper.published_at),
+            normalized_title=normalize_title(fetched_paper.title),
+        )
+        self.session.add(paper)
+        await self.session.flush()
+        return paper, True
+
+    async def _ensure_topic_paper(
+        self,
+        topic_id: UUID,
+        paper_id: UUID,
+        ingestion_run_id: UUID,
+    ) -> None:
+        result = await self.session.execute(
+            select(TopicPaper).where(
+                TopicPaper.topic_profile_id == topic_id,
+                TopicPaper.paper_id == paper_id,
+            )
+        )
+        if result.scalar_one_or_none() is not None:
+            return
+
+        self.session.add(
+            TopicPaper(
+                topic_profile_id=topic_id,
+                paper_id=paper_id,
+                first_seen_run_id=ingestion_run_id,
+            )
+        )
+
+    async def _get_or_create_abstract_chunk(
+        self,
+        paper: Paper,
+        abstract: str | None,
+    ) -> PaperChunk | None:
+        text = (abstract or "").strip()
+        if not text:
+            return None
+
+        result = await self.session.execute(
+            select(PaperChunk).where(
+                PaperChunk.paper_id == paper.id,
+                PaperChunk.section == "abstract",
+                PaperChunk.text == text,
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing is not None:
+            return existing
+
+        chunk = PaperChunk(paper_id=paper.id, section="abstract", text=text)
+        self.session.add(chunk)
+        await self.session.flush()
+        return chunk
+
+    async def _create_claim_if_missing(
+        self,
+        paper: Paper,
+        chunk: PaperChunk | None,
+        evidence: ExtractedEvidence,
+    ) -> bool:
+        result = await self.session.execute(
+            select(EvidenceClaim).where(
+                EvidenceClaim.paper_id == paper.id,
+                EvidenceClaim.key_finding == evidence.key_finding,
+                EvidenceClaim.evidence_quote == evidence.evidence_quote,
+            )
+        )
+        if result.scalar_one_or_none() is not None:
+            return False
+
+        self.session.add(
+            EvidenceClaim(
+                paper_id=paper.id,
+                chunk_id=chunk.id if chunk else None,
+                theory=evidence.theory,
+                research_question=evidence.research_question,
+                method=evidence.method,
+                dataset=evidence.dataset,
+                key_finding=evidence.key_finding,
+                stance=evidence.stance,
+                limitations=evidence.limitations,
+                evidence_quote=evidence.evidence_quote,
+                confidence=evidence.confidence,
+            )
+        )
+        return True
