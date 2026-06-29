@@ -20,9 +20,11 @@ from app.etl.dedup import normalize_title
 from app.etl.extractors import ExtractedEvidence
 from app.etl.fetchers import FetchedPaper
 from app.repositories.evidence_repository import EvidenceRepository, IngestionPersistenceResult
+from app.repositories.evidence_repository import EvidenceSearchResult
 from app.repositories.run_repository import AgentRunRepository, IngestionRunRepository
 from app.repositories.topic_repository import TopicRepository
 from app.schemas.agent_runs import AgentRunCreate, AgentRunRead
+from app.schemas.common import Citation
 from app.schemas.ingestion import IngestionRunRead
 from app.schemas.topics import TopicProfileCreate, TopicProfileRead
 
@@ -81,7 +83,7 @@ def _agent_run_to_read(model: AgentRun) -> AgentRunRead:
         request_id=model.request_id,
         question=model.question,
         answer=model.answer,
-        citations=model.citations or [],
+        citations=[Citation(**citation) for citation in model.citations or []],
         status=model.status,
         token_usage=model.token_usage or {},
         feedback_score=model.feedback_score,
@@ -196,6 +198,24 @@ class PostgresAgentRunRepository(AgentRunRepository):
         )
         model = result.scalar_one_or_none()
         return _agent_run_to_read(model) if model else None
+
+    async def mark_completed(
+        self,
+        run_id: str,
+        answer: str,
+        citations: list[dict],
+        token_usage: dict | None = None,
+    ) -> AgentRunRead | None:
+        model = await self.session.get(AgentRun, _coerce_uuid(run_id))
+        if model is None:
+            return None
+        model.answer = answer
+        model.citations = citations
+        model.status = "completed"
+        model.token_usage = token_usage or {}
+        await self.session.commit()
+        await self.session.refresh(model)
+        return _agent_run_to_read(model)
 
 
 class PostgresEvidenceRepository(EvidenceRepository):
@@ -332,3 +352,46 @@ class PostgresEvidenceRepository(EvidenceRepository):
             )
         )
         return True
+
+    async def search_claims(
+        self,
+        topic_id: str,
+        question: str,
+        limit: int = 5,
+    ) -> list[EvidenceSearchResult]:
+        result = await self.session.execute(
+            select(EvidenceClaim, Paper)
+            .join(Paper, EvidenceClaim.paper_id == Paper.id)
+            .join(TopicPaper, TopicPaper.paper_id == Paper.id)
+            .where(TopicPaper.topic_profile_id == _coerce_uuid(topic_id))
+        )
+        scored: list[tuple[int, EvidenceClaim, Paper]] = []
+        for claim, paper in result.all():
+            scored.append((_score_claim(question, claim, paper), claim, paper))
+
+        scored.sort(key=lambda item: item[0], reverse=True)
+        return [
+            EvidenceSearchResult(
+                claim_id=str(claim.id),
+                paper_title=paper.title,
+                paper_url=paper.url,
+                key_finding=claim.key_finding,
+                stance=claim.stance,
+                evidence_quote=claim.evidence_quote,
+                confidence=float(claim.confidence),
+            )
+            for _, claim, paper in scored[:limit]
+        ]
+
+
+def _score_claim(question: str, claim: EvidenceClaim, paper: Paper) -> int:
+    haystack = " ".join(
+        [
+            paper.title,
+            claim.key_finding,
+            claim.evidence_quote,
+            claim.stance,
+        ]
+    ).lower()
+    terms = {term.strip(".,?!:;()[]{}").lower() for term in question.split()}
+    return sum(1 for term in terms if term and term in haystack)

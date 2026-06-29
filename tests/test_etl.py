@@ -39,4 +39,4 @@ def test_memory_evidence_repository_counts_new_papers_once() -> None:
     assert first.new_papers == 1
     assert first.extracted_claims == 1
     assert second.new_papers == 0
-    assert second.extracted_claims == 1
+    assert second.extracted_claims == 0

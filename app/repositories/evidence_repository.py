@@ -11,6 +11,17 @@ class IngestionPersistenceResult:
     extracted_claims: int
 
 
+@dataclass(frozen=True)
+class EvidenceSearchResult:
+    claim_id: str
+    paper_title: str
+    paper_url: str | None
+    key_finding: str
+    stance: str
+    evidence_quote: str
+    confidence: float
+
+
 class EvidenceRepository(Protocol):
     async def save_pipeline_results(
         self,
@@ -18,4 +29,12 @@ class EvidenceRepository(Protocol):
         ingestion_run_id: str,
         results: list[tuple[FetchedPaper, ExtractedEvidence]],
     ) -> IngestionPersistenceResult:
+        ...
+
+    async def search_claims(
+        self,
+        topic_id: str,
+        question: str,
+        limit: int = 5,
+    ) -> list[EvidenceSearchResult]:
         ...

@@ -12,6 +12,7 @@ This project is the MVP version of the second resume project from `backend-agent
 - Extract structured evidence claims from abstracts or PDF text.
 - Store papers, chunks, evidence claims, ingestion runs, agent runs, feedback, and daily digests.
 - Answer questions through async Agent runs with SSE event streaming.
+- Generate deterministic citation-grounded answers from indexed evidence claims.
 - Evaluate answer quality with citation accuracy, stance accuracy, paper hit rate, and claim extraction metrics.
 
 ## First Architecture
@@ -92,7 +93,7 @@ The first version uses Postgres plus Redis. Add pgvector or Qdrant once the inge
 ## Next Build Steps
 
 1. Add claim extraction with structured LLM output and validation retry.
-2. Add keyword retrieval first, then pgvector or Qdrant retrieval.
+2. Upgrade retrieval from deterministic keyword matching to pgvector or Qdrant.
 3. Persist Agent run events to Redis stream and replay them through SSE.
 4. Connect the scheduler to topic profiles and ingestion runs.
 5. Expand the evaluation set from sample records to 30 gold records.

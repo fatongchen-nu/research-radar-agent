@@ -48,6 +48,24 @@ Body:
 
 It creates a topic and triggers ingestion in the same request.
 
+After that, call:
+
+```text
+POST /api/v1/agent/runs
+```
+
+Use the topic id returned by the demo endpoint:
+
+```json
+{
+  "topic_profile_id": "paste-topic-id-here",
+  "request_id": "demo-question-001",
+  "question": "Does AI adoption improve analyst forecast accuracy?"
+}
+```
+
+The response should return `status: "completed"`, a citation-grounded `answer`, and at least one citation.
+
 ## Manual Topic Flow
 
 Create a topic profile with keywords such as:

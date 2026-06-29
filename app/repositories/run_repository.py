@@ -18,6 +18,15 @@ class AgentRunRepository(Protocol):
     ) -> AgentRunRead | None:
         ...
 
+    async def mark_completed(
+        self,
+        run_id: str,
+        answer: str,
+        citations: list[dict],
+        token_usage: dict | None = None,
+    ) -> AgentRunRead | None:
+        ...
+
 
 class IngestionRunRepository(Protocol):
     async def create(self, topic_id: str) -> IngestionRunRead:
