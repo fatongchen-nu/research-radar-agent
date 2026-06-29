@@ -68,6 +68,23 @@ The response should return `status: "completed"`, a citation-grounded `answer`, 
 
 ## Manual Topic Flow
 
+If your research idea is ambiguous, refine it first.
+
+```text
+POST /api/v1/topics/refinements
+```
+
+Body:
+
+```json
+{
+  "research_idea": "I want to study long-term memory in digital twin systems."
+}
+```
+
+The response includes an `assumed_domain`, ambiguity notes, suggested search queries, and a
+`topic_profile` object that can be copied into `POST /api/v1/topics`.
+
 Create a topic profile with keywords such as:
 
 ```json

@@ -7,6 +7,7 @@ This project is the MVP version of the second resume project from `backend-agent
 ## MVP Scope
 
 - Create topic profiles for research ideas.
+- Refine ambiguous research ideas into structured topic profiles with domains, keywords, excluded terms, and search queries.
 - Fetch paper metadata from arXiv and Semantic Scholar-style sources.
 - Deduplicate papers by DOI, source id, arXiv id, and normalized title.
 - Extract structured evidence claims from abstracts with a deterministic local extractor.
@@ -81,6 +82,7 @@ The first version uses Postgres plus Redis. Add pgvector or Qdrant once the inge
 
 - `GET /api/v1/health`
 - `POST /api/v1/demo/sample-ingestion`
+- `POST /api/v1/topics/refinements`
 - `POST /api/v1/topics`
 - `GET /api/v1/topics`
 - `POST /api/v1/topics/{topic_id}/ingestion-runs`

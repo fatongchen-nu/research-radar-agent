@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Query
 
 from app.schemas.common import ListResponse
-from app.schemas.topics import TopicProfileCreate, TopicProfileRead
+from app.schemas.topics import (
+    TopicProfileCreate,
+    TopicProfileRead,
+    TopicProfileRefinementCreate,
+    TopicProfileRefinementRead,
+)
 from app.services.topic_service import TopicService, get_topic_service
 
 router = APIRouter()
@@ -22,6 +27,14 @@ async def list_topics(
 ) -> ListResponse[TopicProfileRead]:
     topics = await service.list_topics(limit=limit)
     return ListResponse(data=topics)
+
+
+@router.post("/refinements", response_model=TopicProfileRefinementRead)
+async def refine_topic_profile(
+    payload: TopicProfileRefinementCreate,
+    service: TopicService = Depends(get_topic_service),
+) -> TopicProfileRefinementRead:
+    return await service.refine_topic_profile(payload)
 
 
 @router.get("/{topic_id}", response_model=TopicProfileRead)

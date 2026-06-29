@@ -26,6 +26,25 @@ def test_create_topic() -> None:
     assert response.json()["name"] == "AI adoption and analyst forecasts"
 
 
+def test_refine_topic_profile_disambiguates_digital_twin_memory() -> None:
+    client = TestClient(create_app())
+    response = client.post(
+        "/api/v1/topics/refinements",
+        json={
+            "research_idea": "I want to study long-term memory in digital twin systems.",
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["assumed_domain"] == "computer science / cyber-physical systems"
+    assert data["needs_clarification"] is True
+    assert "persistent memory" in data["included_concepts"]
+    assert "ARFIMA" in data["excluded_concepts"]
+    assert data["topic_profile"]["name"] == "Long-term memory in digital twin systems"
+    assert "digital twin" in data["topic_profile"]["keywords"]
+
+
 def test_demo_sample_ingestion() -> None:
     client = TestClient(create_app())
     response = client.post(
